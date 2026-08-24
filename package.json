@@ -1,0 +1,24 @@
+{
+  "name": "pokemon-app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@react-navigation/bottom-tabs": "^7.18.17",
+    "@react-navigation/drawer": "^7.13.9",
+    "@react-navigation/native": "^7.3.17",
+    "@react-navigation/stack": "^7.10.23",
+    "expo": "~54.0.36",
+    "expo-status-bar": "~3.0.9",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-web": "^0.21.0"
+  },
+  "private": true
+}
