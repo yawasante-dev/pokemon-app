@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import COLORS, { withAlpha } from '../constants/colors';
-import { capitalize } from '../constants/pokemon';
+import { capitalize, TYPE_ICONS } from '../constants/pokemon';
 
 export default function PokemonCard({
   name,
@@ -39,24 +39,38 @@ export default function PokemonCard({
         <Text style={styles.name}>{capitalize(name)}</Text>
 
         <View style={styles.typeContainer}>
-          {types.map((item) => (
-            <View
-              key={item.type.name}
-              style={[
-                styles.typeBadge,
-                { backgroundColor: COLORS.type[item.type.name] || COLORS.type.normal },
-              ]}
-            >
-              <Text style={styles.typeText}>
-                {capitalize(item.type.name)}
-              </Text>
-            </View>
-          ))}
+          {types.map((item) => {
+            const typeName = item.type.name;
+            return (
+              <View
+                key={typeName}
+                style={[
+                  styles.typeBadge,
+                  { backgroundColor: COLORS.type[typeName] || COLORS.type.normal },
+                ]}
+              >
+                <Ionicons
+                  name={TYPE_ICONS[typeName] || 'ellipse'}
+                  size={11}
+                  color={COLORS.white}
+                  style={styles.typeIcon}
+                />
+                <Text style={styles.typeText}>
+                  {capitalize(typeName)}
+                </Text>
+              </View>
+            );
+          })}
         </View>
       </View>
 
       {/* Right side: solid colour box with the artwork, matching the Figma cards */}
       <View style={[styles.imageBox, { backgroundColor: cardColor }]}>
+        {/* Soft glowing circles behind the artwork for a bit of depth,
+            instead of a completely flat colour block */}
+        <View style={styles.glowOuter} />
+        <View style={styles.glowInner} />
+
         <Pressable
           onPress={(event) => {
             event.stopPropagation();
@@ -117,9 +131,15 @@ const styles = StyleSheet.create({
   },
 
   typeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
+  },
+
+  typeIcon: {
+    marginRight: 4,
   },
 
   typeText: {
@@ -133,6 +153,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
+    overflow: 'hidden',
+  },
+
+  glowOuter: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+  },
+
+  glowInner: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
   },
 
   favoriteButton: {
@@ -145,5 +182,6 @@ const styles = StyleSheet.create({
   image: {
     width: 88,
     height: 88,
+    zIndex: 1,
   },
 });
