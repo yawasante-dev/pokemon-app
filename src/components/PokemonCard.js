@@ -23,58 +23,22 @@ export default function PokemonCard({
   onPress,
 }) {
   const primaryType = types[0]?.type?.name || 'normal';
-
-  const cardColor =
-    COLORS.type[primaryType] || COLORS.type.normal;
+  const cardColor = COLORS.type[primaryType] || COLORS.type.normal;
 
   return (
-    <Pressable
-      style={[
-        styles.card,
-        {
-          borderLeftColor: cardColor,
-        },
-      ]}
-      onPress={onPress}
-    >
-      <View style={styles.topRow}>
-        <View>
-          <Text style={styles.number}>
-            {number}
-          </Text>
+    <Pressable style={styles.card} onPress={onPress}>
+      {/* Left side: number, name, type badges */}
+      <View style={styles.infoSection}>
+        <Text style={styles.number}>{number}</Text>
+        <Text style={styles.name}>{capitalize(name)}</Text>
 
-          <Text style={styles.name}>
-            {capitalize(name)}
-          </Text>
-        </View>
-
-        <Pressable
-          onPress={(event) => {
-            event.stopPropagation();
-            onToggleFavorite();
-          }}
-          style={styles.favoriteButton}
-        >
-          <Ionicons
-            name={isFavorite ? 'heart' : 'heart-outline'}
-            size={24}
-            color={isFavorite ? COLORS.red : COLORS.gray}
-          />
-        </Pressable>
-      </View>
-
-      <View style={styles.bottomRow}>
         <View style={styles.typeContainer}>
           {types.map((item) => (
             <View
               key={item.type.name}
               style={[
                 styles.typeBadge,
-                {
-                  backgroundColor:
-                    COLORS.type[item.type.name] ||
-                    COLORS.type.normal,
-                },
+                { backgroundColor: COLORS.type[item.type.name] || COLORS.type.normal },
               ]}
             >
               <Text style={styles.typeText}>
@@ -83,6 +47,24 @@ export default function PokemonCard({
             </View>
           ))}
         </View>
+      </View>
+
+      {/* Right side: solid colour box with the artwork, matching the Figma cards */}
+      <View style={[styles.imageBox, { backgroundColor: cardColor }]}>
+        <Pressable
+          onPress={(event) => {
+            event.stopPropagation();
+            onToggleFavorite();
+          }}
+          style={styles.favoriteButton}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons
+            name={isFavorite ? 'heart' : 'heart-outline'}
+            size={18}
+            color={isFavorite ? COLORS.red : COLORS.white}
+          />
+        </Pressable>
 
         <Image
           source={{ uri: image }}
@@ -96,27 +78,23 @@ export default function PokemonCard({
 
 const styles = StyleSheet.create({
   card: {
+    flexDirection: 'row',
     backgroundColor: COLORS.white,
     borderRadius: 18,
     marginBottom: 14,
-    padding: 16,
-    borderLeftWidth: 6,
+    overflow: 'hidden',
 
     elevation: 3,
-
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 6,
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
+    shadowOffset: { width: 0, height: 3 },
   },
 
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  infoSection: {
+    flex: 1,
+    padding: 16,
+    justifyContent: 'center',
   },
 
   number: {
@@ -127,28 +105,16 @@ const styles = StyleSheet.create({
 
   name: {
     marginTop: 3,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: COLORS.black,
-  },
-
-  favoriteButton: {
-    padding: 5,
-  },
-
-  bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginTop: 5,
   },
 
   typeContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    flex: 1,
-    paddingBottom: 10,
+    marginTop: 10,
   },
 
   typeBadge: {
@@ -163,8 +129,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  image: {
+  imageBox: {
     width: 110,
-    height: 110,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+  },
+
+  favoriteButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 1,
+  },
+
+  image: {
+    width: 88,
+    height: 88,
   },
 });
