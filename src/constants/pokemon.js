@@ -9,5 +9,28 @@ export const capitalize = (text) => {
 };
 
 export const formatPokemonNumber = (id) => {
-  return `#${String(id).padStart(3, '0')}`;
+  return `N°${String(id).padStart(3, '0')}`;
+};
+
+// Small Ionicons glyph per type, so badges match the Figma design
+// (each type pill has a little icon before the label).
+export const TYPE_ICONS = {
+  normal: 'radio-button-on-outline',
+  fire: 'flame',
+  water: 'water',
+  electric: 'flash',
+  grass: 'leaf',
+  ice: 'snow',
+  fighting: 'fitness',
+  poison: 'skull',
+  ground: 'earth',
+  flying: 'airplane',
+  psychic: 'eye',
+  bug: 'bug',
+  rock: 'diamond',
+  ghost: 'moon',
+  dragon: 'flame',
+  dark: 'moon',
+  steel: 'shield',
+  fairy: 'sparkles',
 };
