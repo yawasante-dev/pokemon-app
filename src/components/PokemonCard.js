@@ -10,7 +10,7 @@ import {
 
 import { Ionicons } from '@expo/vector-icons';
 
-import COLORS from '../constants/colors';
+import COLORS, { withAlpha } from '../constants/colors';
 import { capitalize } from '../constants/pokemon';
 
 export default function PokemonCard({
@@ -26,7 +26,13 @@ export default function PokemonCard({
   const cardColor = COLORS.type[primaryType] || COLORS.type.normal;
 
   return (
-    <Pressable style={styles.card} onPress={onPress}>
+    <Pressable
+      style={[
+        styles.card,
+        { backgroundColor: withAlpha(cardColor, 0.12) },
+      ]}
+      onPress={onPress}
+    >
       {/* Left side: number, name, type badges */}
       <View style={styles.infoSection}>
         <Text style={styles.number}>{number}</Text>
@@ -79,16 +85,9 @@ export default function PokemonCard({
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    backgroundColor: COLORS.white,
     borderRadius: 18,
     marginBottom: 14,
     overflow: 'hidden',
-
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
   },
 
   infoSection: {
