@@ -39,7 +39,3 @@ yarn-error.*
 # generated native folders
 /ios
 /android
-
-/.claude
-/Claude.md
-/AGENT.md

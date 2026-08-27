@@ -1,187 +1,166 @@
-import React from 'react';
-
-import {
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-import COLORS, { withAlpha } from '../constants/colors';
-import { capitalize, TYPE_ICONS } from '../constants/pokemon';
+import TypeBadge from './TypeBadge';
+import { TYPE_CONFIG, formatPokemonNumber, capitalize, getPokemonImage } from '../constants/pokemonAssets';
 
 export default function PokemonCard({
   name,
   image,
   number,
   types = [],
-  isFavorite,
+  isFavorite: isFavoriteProp,
   onToggleFavorite,
   onPress,
 }) {
-  const primaryType = types[0]?.type?.name || 'normal';
-  const cardColor = COLORS.type[primaryType] || COLORS.type.normal;
+  const [localFavorite, setLocalFavorite] = useState(false);
+  const isFavorite = isFavoriteProp !== undefined ? isFavoriteProp : localFavorite;
+
+  const handleFavoritePress = (e) => {
+    if (e && e.stopPropagation) {
+      e.stopPropagation();
+    }
+    if (onToggleFavorite) {
+      onToggleFavorite(number);
+    } else {
+      setLocalFavorite(!localFavorite);
+    }
+  };
+
+  const primaryType = types[0] || 'normal';
+  const typeConfig = TYPE_CONFIG[primaryType.toLowerCase()] || TYPE_CONFIG.normal;
+  const imageSource = typeof image === 'string' ? { uri: image } : (image || getPokemonImage(number, name));
 
   return (
-    <Pressable
-      style={[
-        styles.card,
-        { backgroundColor: withAlpha(cardColor, 0.12) },
-      ]}
-      onPress={onPress}
-    >
-      {/* Left side: number, name, type badges */}
-      <View style={styles.infoSection}>
-        <Text style={styles.number}>{number}</Text>
-        <Text style={styles.name}>{capitalize(name)}</Text>
+    <TouchableOpacity activeOpacity={0.88} style={styles.cardContainer} onPress={onPress}>
+      <View style={styles.cardInner}>
+        <View style={styles.leftContent}>
+          <Text style={styles.pokemonNumber}>
+            {typeof number === 'number' ? formatPokemonNumber(number) : number}
+          </Text>
+          <Text style={styles.pokemonName} numberOfLines={1}>
+            {capitalize(name)}
+          </Text>
+          <View style={styles.typesRow}>
+            {types.map((type, index) => (
+              <TypeBadge key={index} typeName={type} size="medium" />
+            ))}
+          </View>
+        </View>
 
-        <View style={styles.typeContainer}>
-          {types.map((item) => {
-            const typeName = item.type.name;
-            return (
-              <View
-                key={typeName}
-                style={[
-                  styles.typeBadge,
-                  { backgroundColor: COLORS.type[typeName] || COLORS.type.normal },
-                ]}
-              >
-                <Ionicons
-                  name={TYPE_ICONS[typeName] || 'ellipse'}
-                  size={11}
-                  color={COLORS.white}
-                  style={styles.typeIcon}
-                />
-                <Text style={styles.typeText}>
-                  {capitalize(typeName)}
-                </Text>
-              </View>
-            );
-          })}
+        <View style={[styles.imageWrapper, { backgroundColor: typeConfig.containerColor }]}>
+          <View style={styles.backgroundShape}>
+            <View style={styles.backgroundInnerShape} />
+          </View>
+
+          <Image source={imageSource} style={styles.pokemonImage} resizeMode="contain" />
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={[styles.favoriteButton, isFavorite && styles.favoriteButtonActive]}
+            onPress={handleFavoritePress}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={18}
+              color={isFavorite ? '#FF3B30' : '#FFFFFF'}
+            />
+          </TouchableOpacity>
         </View>
       </View>
-
-      {/* Right side: solid colour box with the artwork, matching the Figma cards */}
-      <View style={[styles.imageBox, { backgroundColor: cardColor }]}>
-        {/* Soft glowing circles behind the artwork for a bit of depth,
-            instead of a completely flat colour block */}
-        <View style={styles.glowOuter} />
-        <View style={styles.glowInner} />
-
-        <Pressable
-          onPress={(event) => {
-            event.stopPropagation();
-            onToggleFavorite();
-          }}
-          style={styles.favoriteButton}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons
-            name={isFavorite ? 'heart' : 'heart-outline'}
-            size={18}
-            color={isFavorite ? COLORS.red : COLORS.white}
-          />
-        </Pressable>
-
-        <Image
-          source={{ uri: image }}
-          style={styles.image}
-          resizeMode="contain"
-        />
-      </View>
-    </Pressable>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  cardContainer: {
+    marginHorizontal: 16,
+    marginVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#E6F0F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardInner: {
     flexDirection: 'row',
-    borderRadius: 18,
-    marginBottom: 14,
-    overflow: 'hidden',
+    alignItems: 'center',
+    paddingLeft: 16,
+    paddingRight: 10,
+    paddingVertical: 10,
+    minHeight: 110,
   },
-
-  infoSection: {
+  leftContent: {
     flex: 1,
-    padding: 16,
     justifyContent: 'center',
+    paddingRight: 10,
   },
-
-  number: {
-    fontSize: 12,
-    color: COLORS.gray,
-    fontWeight: '600',
+  pokemonNumber: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4B6B82',
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
-
-  name: {
-    marginTop: 3,
-    fontSize: 18,
+  pokemonName: {
+    fontSize: 22,
     fontWeight: '800',
-    color: COLORS.black,
+    color: '#131F2A',
+    marginBottom: 8,
   },
-
-  typeContainer: {
+  typesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 10,
-  },
-
-  typeBadge: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
   },
-
-  typeIcon: {
-    marginRight: 4,
-  },
-
-  typeText: {
-    color: COLORS.white,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-
-  imageBox: {
-    width: 110,
-    alignItems: 'center',
+  imageWrapper: {
+    width: 118,
+    height: 100,
+    borderRadius: 18,
     justifyContent: 'center',
-    paddingVertical: 10,
+    alignItems: 'center',
+    position: 'relative',
     overflow: 'hidden',
   },
-
-  glowOuter: {
+  backgroundShape: {
     position: 'absolute',
     width: 100,
     height: 100,
     borderRadius: 50,
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-
-  glowInner: {
-    position: 'absolute',
+  backgroundInnerShape: {
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
   },
-
+  pokemonImage: {
+    width: 85,
+    height: 85,
+    zIndex: 1,
+  },
   favoriteButton: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    zIndex: 1,
+    top: 6,
+    right: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
   },
-
-  image: {
-    width: 88,
-    height: 88,
-    zIndex: 1,
+  favoriteButtonActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
 });

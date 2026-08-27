@@ -1,561 +1,230 @@
-import React, { useEffect, useMemo, useState } from 'react';
-
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  FlatList,
-  Modal,
-  Pressable,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
   View,
+  Text,
+  FlatList,
+  ActivityIndicator,
+  StyleSheet,
+  TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
-
-import { Ionicons } from '@expo/vector-icons';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import PokemonCard from '../components/PokemonCard';
-import Loading from '../components/Loading';
-
-import COLORS from '../constants/colors';
-import {
-  capitalize,
-  formatPokemonNumber,
-  getPokemonImage,
-} from '../constants/pokemon';
-
-const API_URL = 'https://pokeapi.co/api/v2/pokemon';
-
-const SORT_OPTIONS = [
-  { key: 'asc', label: 'Lowest Number' },
-  { key: 'desc', label: 'Highest Number' },
-  { key: 'name-asc', label: 'A-Z' },
-  { key: 'name-desc', label: 'Z-A' },
-];
+import PokemonFilterHeader from '../components/PokemonFilterHeader';
+import { useFavorites } from '../context/FavoritesContext';
+import { getPokemonImage } from '../constants/pokemonAssets';
+import { KANTO_TYPES } from '../constants/kantoTypes';
 
 export default function HomeScreen({ navigation }) {
-  const [pokemon, setPokemon] = useState([]);
-  const [favorites, setFavorites] = useState({});
-  const [search, setSearch] = useState('');
+  const [pokemonList, setPokemonList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
 
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('all');
   const [sortBy, setSortBy] = useState('asc');
-  const [typeModalVisible, setTypeModalVisible] = useState(false);
-  const [sortModalVisible, setSortModalVisible] = useState(false);
 
-  useEffect(() => {
-    fetchPokemon();
-  }, []);
+  const { isFavorite, toggleFavorite } = useFavorites();
 
-  const fetchPokemon = async () => {
+  const fetchPokemonList = useCallback(async () => {
     try {
-      setLoading(true);
-      setError('');
-
-      const response = await fetch(
-        `${API_URL}?limit=30&offset=0`
-      );
-
+      setError(null);
+      const response = await fetch('https://pokeapi.co/api/v2/pokemon?limit=151');
       if (!response.ok) {
-        throw new Error('Failed to fetch Pokémon');
+        throw new Error(`Failed to load Pokemon: status ${response.status}`);
       }
-
       const data = await response.json();
 
-      const detailedPokemon = await Promise.all(
-        data.results.map(async (item) => {
-          const detailResponse = await fetch(item.url);
+      const formatted = data.results.map((item, index) => {
+        const id = index + 1;
+        const types = KANTO_TYPES[id] || ['normal'];
+        const image = getPokemonImage(id, item.name);
+        return { id, name: item.name, url: item.url, types, image };
+      });
 
-          if (!detailResponse.ok) {
-            throw new Error('Failed to fetch Pokémon details');
-          }
-
-          return detailResponse.json();
-        })
-      );
-
-      setPokemon(detailedPokemon);
+      setPokemonList(formatted);
     } catch (err) {
-      console.log(err);
-      setError(
-        'Unable to load Pokémon. Please check your internet connection.'
-      );
+      setError(err.message || 'Could not fetch Pokemon list.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchPokemonList();
+  }, [fetchPokemonList]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchPokemonList();
   };
 
-  const toggleFavorite = (id) => {
-    setFavorites((current) => ({
-      ...current,
-      [id]: !current[id],
-    }));
-  };
-
-  // All type names present in the currently loaded Pokémon, used to
-  // populate the "Type" filter dropdown.
-  const availableTypes = useMemo(() => {
-    const set = new Set();
-    pokemon.forEach((item) => {
-      item.types.forEach((t) => set.add(t.type.name));
+  const handleToggleSort = () => {
+    setSortBy((current) => {
+      if (current === 'asc') return 'desc';
+      if (current === 'desc') return 'name';
+      return 'asc';
     });
-    return Array.from(set).sort();
-  }, [pokemon]);
+  };
 
   const filteredPokemon = useMemo(() => {
-    let list = pokemon.filter((item) =>
-      item.name.toLowerCase().includes(search.toLowerCase())
-    );
+    let list = [...pokemonList];
 
-    if (selectedType !== 'all') {
-      list = list.filter((item) =>
-        item.types.some((t) => t.type.name === selectedType)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          String(p.id).includes(q) ||
+          `N°${String(p.id).padStart(3, '0')}`.toLowerCase().includes(q)
       );
     }
 
-    list = [...list].sort((a, b) => {
-      switch (sortBy) {
-        case 'desc':
-          return b.id - a.id;
-        case 'name-asc':
-          return a.name.localeCompare(b.name);
-        case 'name-desc':
-          return b.name.localeCompare(a.name);
-        case 'asc':
-        default:
-          return a.id - b.id;
-      }
-    });
+    if (selectedType !== 'all') {
+      list = list.filter((p) => p.types.includes(selectedType.toLowerCase()));
+    }
+
+    if (sortBy === 'asc') {
+      list.sort((a, b) => a.id - b.id);
+    } else if (sortBy === 'desc') {
+      list.sort((a, b) => b.id - a.id);
+    } else if (sortBy === 'name') {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    }
 
     return list;
-  }, [pokemon, search, selectedType, sortBy]);
+  }, [pokemonList, searchQuery, selectedType, sortBy]);
 
-  const sortLabel =
-    SORT_OPTIONS.find((option) => option.key === sortBy)?.label ||
-    'Sort';
-
-  const renderPokemon = ({ item }) => {
-    return (
-      <PokemonCard
-        name={item.name}
-        image={getPokemonImage(item.id)}
-        number={formatPokemonNumber(item.id)}
-        types={item.types}
-        isFavorite={!!favorites[item.id]}
-        onToggleFavorite={() =>
-          toggleFavorite(item.id)
-        }
-        onPress={() =>
-          navigation.navigate('PokemonDetails', {
-            pokemonId: item.id,
-            pokemonName: item.name,
-          })
-        }
-      />
-    );
-  };
-
-  if (loading) {
-    return <Loading />;
-  }
-
-  if (error) {
-    return (
-      <SafeAreaView style={styles.errorContainer}>
-        <Ionicons
-          name="cloud-offline-outline"
-          size={60}
-          color={COLORS.red}
-        />
-
-        <Text style={styles.errorTitle}>
-          Something went wrong
-        </Text>
-
-        <Text style={styles.errorText}>
-          {error}
-        </Text>
-
-        <Pressable
-          style={styles.retryButton}
-          onPress={fetchPokemon}
-        >
-          <Text style={styles.retryText}>
-            Try Again
-          </Text>
-        </Pressable>
-      </SafeAreaView>
-    );
-  }
+  const renderPokemonCard = ({ item }) => (
+    <PokemonCard
+      number={item.id}
+      name={item.name}
+      image={item.image}
+      types={item.types}
+      isFavorite={isFavorite(item.id)}
+      onToggleFavorite={() => toggleFavorite(item.id)}
+      onPress={() => {
+        navigation.navigate('PokemonDetails', {
+          pokemonId: item.id,
+          pokemonName: item.name,
+          initialTypes: item.types,
+          initialImage: item.image,
+        });
+      }}
+    />
+  );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.smallTitle}>
-            WELCOME TO
-          </Text>
-
-          <Text style={styles.title}>
-            Pokédex
-          </Text>
-        </View>
-
-        <Pressable
-          style={styles.menuButton}
-          onPress={() => navigation.openDrawer()}
-        >
-          <Ionicons
-            name="menu"
-            size={28}
-            color={COLORS.black}
-          />
-        </Pressable>
-      </View>
-
-      <View style={styles.searchContainer}>
-        <Ionicons
-          name="search-outline"
-          size={20}
-          color={COLORS.gray}
-        />
-
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search Pokémon..."
-          placeholderTextColor={COLORS.gray}
-          style={styles.searchInput}
-        />
-      </View>
-
-      {/* Type filter + sort dropdown pills, matching the Figma header */}
-      <View style={styles.filterRow}>
-        <Pressable
-          style={styles.filterPill}
-          onPress={() => setTypeModalVisible(true)}
-        >
-          <Text style={styles.filterPillText} numberOfLines={1}>
-            {selectedType === 'all' ? 'All Types' : capitalize(selectedType)}
-          </Text>
-          <Ionicons name="chevron-down" size={16} color={COLORS.white} />
-        </Pressable>
-
-        <Pressable
-          style={styles.filterPill}
-          onPress={() => setSortModalVisible(true)}
-        >
-          <Text style={styles.filterPillText} numberOfLines={1}>
-            {sortLabel}
-          </Text>
-          <Ionicons name="chevron-down" size={16} color={COLORS.white} />
-        </Pressable>
-      </View>
-
-      <FlatList
-        data={filteredPokemon}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderPokemon}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        refreshing={loading}
-        onRefresh={fetchPokemon}
-        ListHeaderComponent={
-          <View style={styles.listHeader}>
-            <Text style={styles.sectionTitle}>
-              Pokémon
-            </Text>
-
-            <Text style={styles.count}>
-              {filteredPokemon.length} found
-            </Text>
-          </View>
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              No Pokémon found.
-            </Text>
-          </View>
-        }
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <PokemonFilterHeader
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        selectedType={selectedType}
+        onSelectType={setSelectedType}
+        sortBy={sortBy}
+        onToggleSort={handleToggleSort}
+        onOpenDrawer={() => {
+          if (navigation.openDrawer) {
+            navigation.openDrawer();
+          } else {
+            navigation.getParent()?.openDrawer?.();
+          }
+        }}
       />
 
-      {/* Type filter dropdown */}
-      <Modal
-        visible={typeModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setTypeModalVisible(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setTypeModalVisible(false)}
-        >
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Filter by Type</Text>
-
-            <FlatList
-              data={['all', ...availableTypes]}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={styles.modalOption}
-                  onPress={() => {
-                    setSelectedType(item);
-                    setTypeModalVisible(false);
-                  }}
-                >
-                  {item !== 'all' && (
-                    <View
-                      style={[
-                        styles.modalDot,
-                        { backgroundColor: COLORS.type[item] || COLORS.type.normal },
-                      ]}
-                    />
-                  )}
-                  <Text style={styles.modalOptionText}>
-                    {item === 'all' ? 'All Types' : capitalize(item)}
-                  </Text>
-                  {selectedType === item && (
-                    <Ionicons name="checkmark" size={18} color={COLORS.red} />
-                  )}
-                </Pressable>
-              )}
-            />
-          </View>
-        </Pressable>
-      </Modal>
-
-      {/* Sort dropdown */}
-      <Modal
-        visible={sortModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSortModalVisible(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setSortModalVisible(false)}
-        >
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Sort By</Text>
-
-            {SORT_OPTIONS.map((option) => (
-              <Pressable
-                key={option.key}
-                style={styles.modalOption}
-                onPress={() => {
-                  setSortBy(option.key);
-                  setSortModalVisible(false);
-                }}
-              >
-                <Text style={styles.modalOptionText}>
-                  {option.label}
-                </Text>
-                {sortBy === option.key && (
-                  <Ionicons name="checkmark" size={18} color={COLORS.red} />
-                )}
-              </Pressable>
-            ))}
-          </View>
-        </Pressable>
-      </Modal>
+      {loading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#1E6091" />
+          <Text style={styles.loadingText}>Loading Pokédex...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchPokemonList}>
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredPokemon}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderPokemonCard}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1E6091']} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyTitle}>No Pokémon found</Text>
+              <Text style={styles.emptySubtitle}>Try searching for another name or filter</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F8FAFC',
   },
-
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 14,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-
-  smallTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.gray,
-    letterSpacing: 1.5,
-  },
-
-  title: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: COLORS.black,
-    marginTop: 2,
-  },
-
-  menuButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 2,
-  },
-
-  searchContainer: {
-    height: 50,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    paddingHorizontal: 15,
-    backgroundColor: COLORS.white,
-    borderRadius: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  searchInput: {
-    flex: 1,
-    marginLeft: 10,
-    fontSize: 15,
-    color: COLORS.black,
-  },
-
-  filterRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginHorizontal: 20,
-    marginBottom: 12,
-  },
-
-  filterPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: COLORS.dark,
+  listContent: {
     paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingBottom: 24,
+  },
+  centerContainer: {
     flex: 1,
-  },
-
-  filterPillText: {
-    color: COLORS.white,
-    fontSize: 13,
-    fontWeight: '700',
-    flexShrink: 1,
-  },
-
-  list: {
-    padding: 20,
-    paddingTop: 8,
-  },
-
-  listHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-
-  sectionTitle: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: COLORS.black,
-  },
-
-  count: {
-    fontSize: 13,
-    color: COLORS.gray,
-  },
-
-  emptyContainer: {
-    alignItems: 'center',
-    paddingTop: 50,
-  },
-
-  emptyText: {
-    color: COLORS.gray,
-    fontSize: 15,
-  },
-
-  errorContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 30,
+    padding: 24,
   },
-
-  errorTitle: {
-    marginTop: 18,
-    fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.black,
+  loadingText: {
+    marginTop: 14,
+    fontSize: 16,
+    color: '#64748B',
+    fontWeight: '600',
   },
-
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
   errorText: {
+    fontSize: 16,
+    color: '#E11D48',
     textAlign: 'center',
-    color: COLORS.gray,
-    marginTop: 10,
+    marginBottom: 16,
     lineHeight: 22,
   },
-
   retryButton: {
-    marginTop: 22,
-    backgroundColor: COLORS.red,
-    paddingHorizontal: 28,
-    paddingVertical: 13,
-    borderRadius: 25,
+    backgroundColor: '#1E6091',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
-
-  retryText: {
-    color: COLORS.white,
-    fontWeight: '800',
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
   },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'flex-end',
-  },
-
-  modalSheet: {
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: '70%',
-  },
-
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.black,
-    marginBottom: 12,
-  },
-
-  modalOption: {
-    flexDirection: 'row',
+  emptyContainer: {
+    padding: 40,
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray,
-    gap: 10,
   },
-
-  modalDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 6,
   },
-
-  modalOptionText: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.black,
-    fontWeight: '600',
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
   },
 });
