@@ -21,10 +21,6 @@ export default function SupportScreen() {
           color={COLORS.red}
         />
 
-        <Text style={styles.title}>
-          Support
-        </Text>
-
         <Text style={styles.text}>
           If you experience a problem with the
           application, please check your internet

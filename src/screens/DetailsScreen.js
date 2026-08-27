@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 import {
   Image,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -82,12 +83,16 @@ export default function DetailsScreen({ route, navigation }) {
         contentContainerStyle={styles.content}
       >
         <View style={styles.header}>
-          <Ionicons
-            name="arrow-back"
-            size={26}
-            color={COLORS.black}
+          <Pressable
             onPress={() => navigation.goBack()}
-          />
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons
+              name="arrow-back"
+              size={26}
+              color={COLORS.black}
+            />
+          </Pressable>
 
           <Text style={styles.headerTitle}>
             Details

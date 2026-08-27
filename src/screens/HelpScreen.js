@@ -21,10 +21,6 @@ export default function HelpScreen() {
           color={COLORS.red}
         />
 
-        <Text style={styles.title}>
-          Help
-        </Text>
-
         <Text style={styles.text}>
           Use the search bar on the Home screen to find
           Pokémon by name.

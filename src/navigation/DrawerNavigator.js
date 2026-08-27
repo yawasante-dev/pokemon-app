@@ -21,7 +21,11 @@ export default function DrawerNavigator() {
   return (
     <Drawer.Navigator
       screenOptions={({ route }) => ({
-        headerShown: false,
+        // Home has its own custom header (menu button, search bar, etc.),
+        // so only hide the native header there. Settings/Help/Support
+        // need the native header so they get a working back button.
+        headerShown: route.name !== 'Pokédex',
+        headerTitleAlign: 'center',
 
         drawerActiveTintColor: COLORS.red,
 

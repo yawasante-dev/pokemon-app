@@ -20,10 +20,6 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>
-          Settings
-        </Text>
-
         <View style={styles.card}>
           <View>
             <Text style={styles.label}>
@@ -70,13 +66,6 @@ const styles = StyleSheet.create({
 
   content: {
     padding: 20,
-  },
-
-  title: {
-    fontSize: 30,
-    fontWeight: '900',
-    color: COLORS.black,
-    marginBottom: 20,
   },
 
   card: {
